@@ -1,30 +1,87 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import TaskItem from "./TaskItem";
 
-const TaskList = ({ tasks, deleteTask }) => {
+function TaskList() {
+  const [tasks, setTasks] = useState([]);
+  const [newTask, setNewTask] = useState("");
+
+  // Fetch tasks from backend
+  useEffect(() => {
+    const fetchTasks = async () => {
+      const response = await axios.get("http://localhost:5000/api/tasks");
+      setTasks(response.data);
+    };
+
+    fetchTasks();
+  }, []);
+
+  // Add a new task
+  const handleAddTask = async () => {
+    if (newTask.trim() === "") return;
+
+    const response = await axios.post("http://localhost:5000/api/tasks", {
+      name: newTask,
+      priority: "medium", // default priority
+    });
+    setTasks([...tasks, response.data]);
+    setNewTask("");
+  };
+
+  // Update task status
+  const handleUpdateStatus = async (taskId, status) => {
+    const response = await axios.put(`http://localhost:5000/api/tasks/${taskId}`, {
+      status,
+    });
+    setTasks(
+      tasks.map((task) =>
+        task._id === taskId ? { ...task, status: response.data.status } : task
+      )
+    );
+  };
+
+  // Update task priority
+  const handleUpdatePriority = async (taskId, priority) => {
+    const response = await axios.put(`http://localhost:5000/api/tasks/${taskId}`, {
+      priority,
+    });
+    setTasks(
+      tasks.map((task) =>
+        task._id === taskId ? { ...task, priority: response.data.priority } : task
+      )
+    );
+  };
+
+  // Delete a task
+  const handleDeleteTask = async (taskId) => {
+    await axios.delete(`http://localhost:5000/api/tasks/${taskId}`);
+    setTasks(tasks.filter((task) => task._id !== taskId));
+  };
+
   return (
     <div>
-      {tasks.length === 0 ? (
-        <p className="text-gray-600 italic text-center">No tasks yet!</p>
-      ) : (
-        <ul className="space-y-4">
-          {tasks.map((task) => (
-            <li
-              key={task.id}
-              className="p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg shadow-lg flex justify-between items-center hover:shadow-xl transition-shadow duration-300"
-            >
-              <span className="text-gray-700 font-medium">{task.name}</span>
-              <button
-                onClick={() => deleteTask(task.id)}
-                className="text-red-500 hover:text-red-700 transition duration-200"
-              >
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <h2>Task Manager</h2>
+      <input
+        type="text"
+        placeholder="Add a task..."
+        value={newTask}
+        onChange={(e) => setNewTask(e.target.value)}
+      />
+      <button onClick={handleAddTask}>Add</button>
+
+      <div>
+        {tasks.map((task) => (
+          <TaskItem
+            key={task._id}
+            task={task}
+            onUpdateStatus={handleUpdateStatus}
+            onUpdatePriority={handleUpdatePriority}
+            onDelete={handleDeleteTask}
+          />
+        ))}
+      </div>
     </div>
   );
-};
+}
 
 export default TaskList;
